@@ -1,0 +1,41 @@
+services:
+    postgresql:
+        container_name: postgresql
+        build:
+            context: ./Docker/PostgreSQL
+            dockerfile: Dockerfile
+        volumes:
+            - postgresql_volume:/var/lib/postgresql
+        networks:
+            - cv-network
+        environment:
+            POSTGRESQL_ROOT_PASSWORD: ${POSTGRESQL_ROOT_PASSWORD}
+            POSTGRESQL_USER: ${POSTGRESQL_USER}
+            POSTGRESQL_PASSWORD: ${POSTGRESQL_PASSWORD}
+            POSTGRESQL_DATABASE: ${POSTGRESQL_DATABASE}
+            TZ: ${TIMEZONE}
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}",
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        restart: on-failure
+        ports:
+            - "5432:5432"
+        expose:
+            - "5432"
+
+volumes:
+    postgresql_volume:
+        driver: local
+        driver_opts:
+            type: "none"
+            o: "bind"
+            device: "${POSTGRESQL_VOLUME_PATH}"
+networks:
+    cv-network:
+        driver: bridge

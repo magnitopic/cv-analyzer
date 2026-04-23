@@ -1,0 +1,8 @@
+google-generativeai
+pdfplumber
+pypdf
+pandas
+python-dotenv
+openpyxl
+xlsxwriter
+streamlit

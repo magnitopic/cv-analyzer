@@ -1,7 +1,9 @@
 services:
     postgresql:
         container_name: postgresql
-        image: postgres:16
+        build:
+            context: ./Docker/PostgreSQL
+            dockerfile: Dockerfile
         volumes:
             - postgresql_volume:/var/lib/postgresql/data
         networks:

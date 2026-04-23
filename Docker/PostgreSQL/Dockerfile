@@ -1,3 +1,3 @@
-FROM bitnami/postgresql:16.4.0
+FROM postgres:16
 
-COPY ./init/init.sql /docker-entrypoint-initdb.d
+COPY ./init/init.sql /docker-entrypoint-initdb.d/

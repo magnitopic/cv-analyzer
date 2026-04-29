@@ -2,6 +2,7 @@ import os
 import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 import db
 
 UPLOADS_DIR = "/backend/uploads"
@@ -50,11 +51,22 @@ def get_cv(cv_id: int):
 async def upload_cv(file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only .pdf files are supported")
-    dest = save_file(file, "cvs")
+    save_file(file, "cvs")
     return db.execute(
-        "INSERT INTO cvs (name, filepath) VALUES (%s, %s) RETURNING id, name, upload_date",
-        (file.filename, dest),
+        "INSERT INTO cvs (name) VALUES (%s) RETURNING id, name, upload_date",
+        (file.filename,),
     )
+
+
+@app.get("/cvs/{cv_id}/download")
+def download_cv(cv_id: int):
+    rows = db.query("SELECT name FROM cvs WHERE id = %s", (cv_id,))
+    if not rows:
+        raise HTTPException(status_code=404, detail="CV not found")
+    path = os.path.join(UPLOADS_DIR, "cvs", rows[0]["name"])
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="File not found on disk")
+    return FileResponse(path, media_type="application/pdf", filename=rows[0]["name"])
 
 
 # --- Job Descriptions ---
@@ -76,10 +88,10 @@ def get_job_description(jd_id: int):
 async def upload_jd(file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only .pdf files are supported")
-    dest = save_file(file, "jds")
+    save_file(file, "jds")
     return db.execute(
-        "INSERT INTO job_descriptions (name, filepath) VALUES (%s, %s) RETURNING id, name, upload_date",
-        (file.filename, dest),
+        "INSERT INTO job_descriptions (name) VALUES (%s) RETURNING id, name, upload_date",
+        (file.filename,),
     )
 
 

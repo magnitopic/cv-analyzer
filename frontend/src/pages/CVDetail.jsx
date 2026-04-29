@@ -31,7 +31,18 @@ export default function CVDetail() {
         ← Back
       </Link>
 
-      <h1 style={{ marginTop: 16 }}>{cv?.name ?? "Loading..."}</h1>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 16 }}>
+        <h1 style={{ margin: 0 }}>{cv?.name ?? "Loading..."}</h1>
+        {cv && (
+          <a
+            href={`${API}/cvs/${id}/download`}
+            download={cv.name}
+            style={{ fontSize: 14, color: "#0070f3", textDecoration: "none" }}
+          >
+            ↓ Download
+          </a>
+        )}
+      </div>
       {cv && (
         <p style={{ color: "#555", fontSize: 14 }}>
           Uploaded: {new Date(cv.upload_date).toLocaleString()}

@@ -3,3 +3,11 @@ uvicorn[standard]
 psycopg2-binary
 python-dotenv
 python-multipart
+pymupdf
+pdfplumber
+keybert
+yake
+sentence-transformers
+scikit-learn
+numpy
+google-genai

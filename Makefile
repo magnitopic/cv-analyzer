@@ -45,4 +45,12 @@ destroy: down
 re: destroy build
 	@echo "$(GREEN)<+> RESETTING CONTAINERS <+>$(COLOR_OFF)"
 
-.PHONY: all build stop down destroy restart volumes re postgresql frontend backend
+reset-db:
+	@echo "$(GREEN)<+> RESETTING DATABASE <+>$(COLOR_OFF)"
+	@docker compose -f $(DOCKER_COMPOSE) exec postgresql psql -U $(POSTGRESQL_USER) -d $(POSTGRESQL_DATABASE) -c \
+		"DROP TABLE IF EXISTS analyses, job_descriptions, cvs CASCADE;"
+	@docker compose -f $(DOCKER_COMPOSE) exec postgresql psql -U $(POSTGRESQL_USER) -d $(POSTGRESQL_DATABASE) -f \
+		/docker-entrypoint-initdb.d/init.sql
+	@echo "$(GREEN)<+> DATABASE RESET COMPLETE <+>$(COLOR_OFF)"
+
+.PHONY: all build stop down destroy restart volumes re postgresql frontend backend reset-db

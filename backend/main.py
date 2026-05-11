@@ -1,9 +1,11 @@
+import json
 import os
 import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import db
+from pipeline import ejecutar_pipeline
 
 UPLOADS_DIR = "/backend/uploads"
 
@@ -51,10 +53,10 @@ def get_cv(cv_id: int):
 async def upload_cv(file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only .pdf files are supported")
-    save_file(file, "cvs")
+    filepath = save_file(file, "cvs")
     return db.execute(
-        "INSERT INTO cvs (name) VALUES (%s) RETURNING id, name, upload_date",
-        (file.filename,),
+        "INSERT INTO cvs (name, filepath) VALUES (%s, %s) RETURNING id, name, upload_date",
+        (file.filename, filepath),
     )
 
 
@@ -88,10 +90,10 @@ def get_job_description(jd_id: int):
 async def upload_jd(file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only .pdf files are supported")
-    save_file(file, "jds")
+    filepath = save_file(file, "jds")
     return db.execute(
-        "INSERT INTO job_descriptions (name) VALUES (%s) RETURNING id, name, upload_date",
-        (file.filename,),
+        "INSERT INTO job_descriptions (name, filepath) VALUES (%s, %s) RETURNING id, name, upload_date",
+        (file.filename, filepath),
     )
 
 
@@ -106,3 +108,44 @@ def get_analysis(cv_id: int, jd_id: int):
     if not rows:
         raise HTTPException(status_code=404, detail="Analysis not found")
     return rows[0]
+
+
+@app.post("/analyses/{cv_id}/{jd_id}")
+def run_analysis(cv_id: int, jd_id: int):
+    """
+    Runs the full TalentMatch pipeline on the given CV and job description,
+    then persists the result to the analyses table.
+
+    If an analysis already exists for this pair it is overwritten with fresh results.
+    Note: this endpoint is synchronous — the pipeline takes 20-60 s on first run
+    while the embedding model loads; subsequent runs are faster.
+    """
+    cv_rows = db.query("SELECT filepath FROM cvs WHERE id = %s", (cv_id,))
+    if not cv_rows:
+        raise HTTPException(status_code=404, detail="CV not found")
+
+    jd_rows = db.query("SELECT filepath FROM job_descriptions WHERE id = %s", (jd_id,))
+    if not jd_rows:
+        raise HTTPException(status_code=404, detail="Job description not found")
+
+    ruta_cv     = cv_rows[0]["filepath"]
+    ruta_puesto = jd_rows[0]["filepath"]
+
+    if not os.path.exists(ruta_cv):
+        raise HTTPException(status_code=404, detail=f"CV file not found on disk: {ruta_cv}")
+    if not os.path.exists(ruta_puesto):
+        raise HTTPException(status_code=404, detail=f"JD file not found on disk: {ruta_puesto}")
+
+    result = ejecutar_pipeline(ruta_cv, ruta_puesto)
+
+    row = db.execute(
+        """
+        INSERT INTO analyses (cv_id, jd_id, result_json)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (cv_id, jd_id)
+        DO UPDATE SET result_json = EXCLUDED.result_json, analyzed_at = CURRENT_TIMESTAMP
+        RETURNING id, cv_id, jd_id, result_json, analyzed_at
+        """,
+        (cv_id, jd_id, json.dumps(result, ensure_ascii=False)),
+    )
+    return row

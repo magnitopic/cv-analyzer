@@ -22,13 +22,13 @@ N_KEYWORDS = 15
 
 def _nivel_score(score: float) -> str:
     if score >= 0.75:
-        return "Alta idoneidad"
+        return "High match"
     elif score >= 0.55:
-        return "Idoneidad moderada"
+        return "Moderate match"
     elif score >= 0.35:
-        return "Idoneidad baja"
+        return "Low match"
     else:
-        return "Muy baja idoneidad"
+        return "Very low match"
 
 
 def ejecutar_pipeline(
